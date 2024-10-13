@@ -1,4 +1,5 @@
 const fs = require('fs');
+const readline = require('readline');
 const { Readable } = require('stream');
 const { finished } = require('stream/promises');
 const childProcess = require('child_process');
@@ -6,6 +7,7 @@ const axios = require('axios');
 const config = require('./config.json');
 
 async function login(account) {
+    const session = { url: account.url };
     let res = await fetch(account.url+'/webapi/entry.cgi', {
         method: 'POST',
         headers: {
@@ -16,26 +18,38 @@ async function login(account) {
             version: 7,
             method: 'login',
             enable_syno_token: 'yes',
+            enable_device_token: 'yes',
             format: 'sid',
+            device_name: 'SynologyMediaConverter',
+            device_id: account.deviceId || '',
             account: account.username,
-            passwd: account.password
+            passwd: account.password,
+            otp_code: account.otpCode || ''
         })
     });
     res = await res.json();
-    if(!res.success) throw new Error('Authentication failed with error '+JSON.stringify(res.error));
+    if(!res.success) {
+        if(res.error.code == 403) {
+            session.requireOtp = true;
+            return session;
+        } else {
+            throw new Error('Authentication failed with error '+JSON.stringify(res.error));
+        }
+    }
 
-    account.did = res.data.device_id;
-    account.sid = res.data.sid;
-    account.synoToken = res.data.synotoken;
+    session.did = res.data.device_id;
+    session.sid = res.data.sid;
+    session.synoToken = res.data.synotoken;
+    return session;
 }
 
-async function checkConversionNeeded(account) {
-    let res = await fetch(account.url+'/webapi/entry.cgi', {
+async function checkConversionNeeded(session) {
+    let res = await fetch(session.url+'/webapi/entry.cgi', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Syno-Token': account.synoToken,
-            'Cookie': `did=${account.did}; id=${account.sid}`
+            'X-Syno-Token': session.synoToken,
+            'Cookie': `did=${session.did}; id=${session.sid}`
         },
         body: new URLSearchParams({
             api: 'SYNO.Foto.Upload.ConvertedFile',
@@ -50,16 +64,16 @@ async function checkConversionNeeded(account) {
     return res.data.list;
 }
 
-async function downloadFile(account, unitId, savePath) {
-    let res = await fetch(account.url+'/webapi/entry.cgi?'+new URLSearchParams({
+async function downloadFile(session, unitId, savePath) {
+    let res = await fetch(session.url+'/webapi/entry.cgi?'+new URLSearchParams({
         api: 'SYNO.Foto.Download',
         version: 2,
         method: 'download',
         unit_id: '['+unitId+']'
     }), {
         headers: {
-            'X-Syno-Token': account.synoToken,
-            'Cookie': `did=${account.did}; id=${account.sid}`
+            'X-Syno-Token': session.synoToken,
+            'Cookie': `did=${session.did}; id=${session.sid}`
         }
     });
     if(res.headers.get("content-type").includes('json')) {
@@ -71,7 +85,7 @@ async function downloadFile(account, unitId, savePath) {
     }
 }
 
-/*async function uploadFiles(account, unitId, filePaths) {
+/*async function uploadFiles(session, unitId, filePaths) {
     // Upload fails due to bug in Fetch API or built in FormData
     const form = new FormData();
     form.set('api', 'SYNO.Foto.Upload.ConvertedFile');
@@ -83,11 +97,11 @@ async function downloadFile(account, unitId, savePath) {
         form.set(name, fs.createReadStream(path));
     }
 
-    let res = await fetch(account.url+'/webapi/entry.cgi', {
+    let res = await fetch(session.url+'/webapi/entry.cgi', {
         method: 'POST',
         headers: {
-            'X-Syno-Token': account.synoToken,
-            'Cookie': `did=${account.did}; id=${account.sid}`
+            'X-Syno-Token': session.synoToken,
+            'Cookie': `did=${session.did}; id=${session.sid}`
         },
         body: form
     });
@@ -95,7 +109,7 @@ async function downloadFile(account, unitId, savePath) {
     console.log(res)
     if(!res.success) throw new Error(`Upload of file ${unitId} failed with error `+JSON.stringify(res.error));
 }*/
-async function uploadFiles(account, unitId, filePaths) {
+async function uploadFiles(session, unitId, filePaths) {
     const form = {
         api: 'SYNO.Foto.Upload.ConvertedFile',
         version: 3,
@@ -106,17 +120,17 @@ async function uploadFiles(account, unitId, filePaths) {
         const path = filePaths[name];
         form[name] = fs.createReadStream(path);
     }
-    const res = await axios.postForm(account.url+'/webapi/entry.cgi', form, {
+    const res = await axios.postForm(session.url+'/webapi/entry.cgi', form, {
         headers: {
-            'X-Syno-Token': account.synoToken,
-            'Cookie': `did=${account.did}; id=${account.sid}`
+            'X-Syno-Token': session.synoToken,
+            'Cookie': `did=${session.did}; id=${session.sid}`
         }
     });
     if(!res.data.success) throw new Error(`Upload of file ${unitId} failed with error `+JSON.stringify(res.data.error));
 }
 
-async function setBroken(account, unitId) {
-    let res = await fetch(account.url+'/webapi/entry.cgi?'+new URLSearchParams({
+async function setBroken(session, unitId) {
+    let res = await fetch(session.url+'/webapi/entry.cgi?'+new URLSearchParams({
         api: 'SYNO.Foto.Upload.ConvertedFile',
         version: 3,
         method: 'set_broken',
@@ -124,8 +138,8 @@ async function setBroken(account, unitId) {
         type: '["photo","video"]' // TODO: only set affacted types broken
     }), {
         headers: {
-            'X-Syno-Token': account.synoToken,
-            'Cookie': `did=${account.did}; id=${account.sid}`
+            'X-Syno-Token': session.synoToken,
+            'Cookie': `did=${session.did}; id=${session.sid}`
         }
     });
     res = await res.json();
@@ -212,16 +226,42 @@ async function cleanupFiles(filePaths) {
     }
 }
 
+function readLine(prompt) {
+    return new Promise(resolve => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        rl.question(prompt, text => {
+            rl.close();
+            resolve(text);
+        });
+    });
+}
+
 
 (async () => {
+    if(!fs.existsSync('tmp')) {
+        fs.mkdirSync('tmp');
+    }
+
     try {
         for(const account of config.accounts) {
             console.log(`Logging in as ${account.username} on ${account.url}`);
-            await login(account);
+            let session = await login(account);
+            if(session.requireOtp) {
+                account.otpCode = await readLine('Account requires 2FA, please enter OTP code: ');
+                session = await login(account);
+                delete account.otpCode;
+            }
+            if(!account.deviceId) {
+                account.deviceId = session.did;
+                fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
+            }
             
             checkLoop: while(true) {
                 console.log('Checking if conversion is needed');
-                const conversionNeeded = await checkConversionNeeded(account);
+                const conversionNeeded = await checkConversionNeeded(session);
                 if(conversionNeeded.length == 0) {
                     console.log('Finished, no video for conversion left');
                     break;
@@ -233,7 +273,7 @@ async function cleanupFiles(filePaths) {
                         const srcPath = 'tmp/'+fileInfo.filename;
                         let filePaths = {};
                         
-                        await downloadFile(account, fileInfo.unit_id, srcPath);
+                        await downloadFile(session, fileInfo.unit_id, srcPath);
                         try {
                             switch(fileInfo.type) {
                                 case 0:
@@ -245,10 +285,10 @@ async function cleanupFiles(filePaths) {
                             }
                         } catch(err) {
                             console.error('Marking file as broken:', err);
-                            await setBroken(account, fileInfo.unit_id);
+                            await setBroken(session, fileInfo.unit_id);
                             continue;
                         }
-                        await uploadFiles(account, fileInfo.unit_id, filePaths);
+                        await uploadFiles(session, fileInfo.unit_id, filePaths);
                         filePaths['src'] = srcPath;
                         await cleanupFiles(filePaths);
                     } catch(err) {
