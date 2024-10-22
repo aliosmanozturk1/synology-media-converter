@@ -130,6 +130,10 @@ async function uploadFiles(session, unitId, filePaths) {
 }
 
 async function setBroken(session, unitId) {
+    if(process.env.EXIT_ON_FAIL == 'true') {
+        throw new Error('Exit on broken file is enabled.');
+    }
+
     let res = await fetch(session.url+'/webapi/entry.cgi?'+new URLSearchParams({
         api: 'SYNO.Foto.Upload.ConvertedFile',
         version: 3,
