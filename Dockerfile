@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk add --no-cache nodejs npm ffmpeg imagemagick libheif
+RUN apk add --no-cache nodejs npm ffmpeg imagemagick libheif tzdata
 
 COPY . /app
 WORKDIR /app

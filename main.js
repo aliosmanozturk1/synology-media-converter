@@ -67,7 +67,7 @@ async function checkConversionNeeded(session) {
 async function downloadFile(session, unitId, savePath) {
     let res = await fetch(session.url+'/webapi/entry.cgi?'+new URLSearchParams({
         api: 'SYNO.Foto.Download',
-        version: 2,
+        version: 1,
         method: 'download',
         unit_id: '['+unitId+']'
     }), {
@@ -193,7 +193,7 @@ async function processVideo(srcPath, needThumbnails, needVideo) {
     }
     for(const thumbType in thumbs) {
         const maxSize = thumbs[thumbType];
-        const scale = landscape ? `'-1:min(${maxSize},ih)'` : `'min(${maxSize},iw):-1'`;
+        const scale = landscape ? `'-2:min(${maxSize},ih)'` : `'min(${maxSize},iw):-2'`;
         let newPath = srcPath.replace(/\..+$/, '')+'-'+thumbType;
         
         if(thumbType != 'film_h264') {
@@ -218,7 +218,7 @@ async function processImage(srcPath) {
     for(const thumbType in thumbs) {
         const maxSize = thumbs[thumbType];
         let newPath = srcPath.replace(/\..+$/, '')+'-'+thumbType+'.jpg';
-        await executeCommand('magick', ['convert', '-resize', maxSize+'>^', srcPath, newPath]);
+        await executeCommand('magick', ['convert', srcPath, '-resize', maxSize+'<^', newPath]);
         thumbs[thumbType] = newPath;
     }
     return thumbs;
@@ -267,7 +267,7 @@ function readLine(prompt) {
                 console.log('Checking if conversion is needed');
                 const conversionNeeded = await checkConversionNeeded(session);
                 if(conversionNeeded.length == 0) {
-                    console.log('Finished, no video for conversion left');
+                    console.log('Finished, no files for conversion left');
                     break;
                 }
                 

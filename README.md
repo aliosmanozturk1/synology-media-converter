@@ -37,11 +37,13 @@ Example config for 2 users on the same device:
         }
     ]
 }
-
 ```
 
 ## Environment Variables
 
 | Variable | Description | Default |
 | -------- | ----------- | ------- |
+| TZ | Current timezone, necessary for crontab to use the correct time. [List](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) of supported Timezones. | UTC |
 | CRON_INTERVAL | Crontab interval that defines how often the script will be executed. [Crontab Generator](https://crontab.guru/) | `0 1 * * *` (Every day at 1am) |
+| SINGLE_RUN | Only run the script once instead of using cron. Auto restart of the container must be disabled. | false |
+| EXIT_ON_FAIL | Exit on conversion errors instead of permanently marking the affected file as broken. Usually only used for testing purposes. | false |
