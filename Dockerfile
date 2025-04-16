@@ -1,6 +1,11 @@
 FROM alpine:latest
 
-RUN apk add --no-cache tzdata nodejs npm ffmpeg libva-intel-driver imagemagick libheif
+ARG TARGETPLATFORM
+
+RUN apk add --no-cache tzdata nodejs npm ffmpeg imagemagick libheif
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+        apk add libva-intel-driver; \
+    fi
 
 COPY . /app
 WORKDIR /app
