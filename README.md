@@ -8,7 +8,7 @@ Since DSM version 7.2.2 Synology has removed the ability to generate thumbnails,
 ## Installation
 
 **Container Manager:**\
-You can easily install the service via the [Container manager](https://www.synology.com/de-de/dsm/feature/container-manager) by importing the file `ContainerManager_synology-media-converter.json` in the GUI. By default the script expects there to be a volume called docker that contains the synology-media-converter.json config described in [Configuration](#configuration). You can edit the host volume path at the very bottom of the preset file before importing it.
+You can easily install the service via the [Container manager](https://www.synology.com/de-de/dsm/feature/container-manager) by importing the file `ContainerManager_synology-media-converter.json` in the GUI. By default the script expects there to be a volume called docker that contains the `synology-media-converter.json` config described in [Configuration](#configuration). You can edit the host volume path at the very bottom of the preset file before importing it.
 
 **Docker CLI:**
 ```bash
@@ -17,6 +17,8 @@ docker run -d --name=synology-media-converter \
     -v <config_file>:/app/config.json \
     -e TZ=<timezone>
     -e CRON_INTERVAL="0 1 * * *" \
+    -e USE_VAAPI=true \
+    --device /dev/dri/renderD128 \
     ghcr.io/1randomdev/synology-media-converter
 ```
 
@@ -47,3 +49,7 @@ Example config for 2 users on the same device:
 | CRON_INTERVAL | Crontab interval that defines how often the script will be executed. [Crontab Generator](https://crontab.guru/) | `0 1 * * *` (Every day at 1am) |
 | SINGLE_RUN | Only run the script once instead of using cron. Auto restart of the container must be disabled. | false |
 | EXIT_ON_FAIL | Exit on conversion errors instead of permanently marking the affected file as broken. Usually only used for testing purposes. | false |
+| USE_VAAPI | Enable hardware acceleration via VAAPI. For more info see [Hardware Acceleration](#hardware-acceleration). | false |
+
+## Hardare Acceleration
+Hardware transcoding to x264 is currently supported on Intel Graphics using VAAPI, which is what's available on most DiskStation models. To enable hardware acceleration add the environment variable `USE_VAAPI=true` and pass through the VAAPI device via `--device /dev/dri/renderD128`. The right permissions will be set automatically on startup.

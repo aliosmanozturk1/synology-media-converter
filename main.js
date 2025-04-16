@@ -201,7 +201,11 @@ async function processVideo(srcPath, needThumbnails, needVideo) {
             await executeCommand('ffmpeg', ['-v', 'error', '-y', '-i', srcPath, '-filter:v', 'thumbnail,scale='+scale, '-frames:v', '1', newPath]);
         } else {
             newPath += '.mp4';
-            await executeCommand('ffmpeg', ['-v', 'error', '-y', '-i', srcPath, '-filter:v', 'scale='+scale, '-c:v', 'libx264', '-preset', 'slow', newPath]);
+            if(process.env.USE_VAAPI == 'true') {
+                await executeCommand('ffmpeg', ['-v', 'error', '-y', '-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi', '-i', srcPath, '-filter:v', 'scale_vaapi='+scale, '-c:v', 'h264_vaapi', '-preset', 'slow', newPath]);
+            } else {
+                await executeCommand('ffmpeg', ['-v', 'error', '-y', '-i', srcPath, '-filter:v', 'scale='+scale, '-c:v', 'h264', '-preset', 'slow', newPath]);
+            }
         }
         thumbs[thumbType] = newPath;
     }

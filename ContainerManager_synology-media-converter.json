@@ -1,0 +1,61 @@
+{
+   "CapAdd" : null,
+   "CapDrop" : null,
+   "cmd" : "",
+   "cpu_priority" : 50,
+   "enable_publish_all_ports" : false,
+   "enable_restart_policy" : false,
+   "enable_service_portal" : false,
+   "enabled" : false,
+   "env_variables" : [
+      {
+         "key" : "PATH",
+         "value" : "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      },
+      {
+         "key" : "USE_VAAPI",
+         "value" : "true"
+      }
+   ],
+   "exporting" : false,
+   "id" : "51653f6b3a8b6c4b7008d0f122ceff049e6b156db0b1a9dfca7024fc5a2edd23",
+   "image" : "ghcr.io/1randomdev/synology-media-converter:latest",
+   "is_ddsm" : false,
+   "is_package" : false,
+   "links" : [],
+   "memory_limit" : 0,
+   "name" : "synology-media-converter",
+   "network" : [
+      {
+         "driver" : "bridge",
+         "name" : "bridge"
+      }
+   ],
+   "network_mode" : "bridge",
+   "port_bindings" : [],
+   "privileged" : false,
+   "service_portals" : [],
+   "shortcut" : {
+      "enable_shortcut" : false,
+      "enable_status_page" : false,
+      "enable_web_page" : false,
+      "web_page_url" : ""
+   },
+   "use_host_network" : false,
+   "version" : 2,
+   "volume_bindings" : [
+      {
+         "host_volume_file" : "/docker/synology-media-converter.json",
+         "is_directory" : false,
+         "mount_point" : "/app/config.json",
+         "type" : "rw"
+      }
+   ],
+   "devices" : [
+      {
+         "CgroupPermissions" : "rwm",
+         "PathInContainer" : "/dev/dri/renderD128",
+         "PathOnHost" : "/dev/dri/renderD128"
+      }
+   ]
+}
