@@ -51,11 +51,13 @@
          "type" : "rw"
       }
    ],
-   "devices" : [
-      {
-         "CgroupPermissions" : "rwm",
-         "PathInContainer" : "/dev/dri/renderD128",
-         "PathOnHost" : "/dev/dri/renderD128"
-      }
-   ]
+   "host_config": {
+      "devices" : [
+         {
+            "CgroupPermissions" : "rwm",
+            "PathInContainer" : "/dev/dri/renderD128",
+            "PathOnHost" : "/dev/dri/renderD128"
+         }
+      ]
+   }
 }

@@ -4,7 +4,7 @@ ARG TARGETPLATFORM
 
 RUN apk add --no-cache tzdata nodejs npm ffmpeg imagemagick libheif
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-        apk add libva-intel-driver; \
+        apk add --no-cache libva-intel-driver mesa-va-gallium; \
     fi
 
 COPY . /app
